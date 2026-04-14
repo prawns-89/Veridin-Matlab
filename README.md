@@ -21,9 +21,20 @@ The code architecture natively drives the distinct outputs outlined within the c
 
 ## 2. Advanced Operating Instructions
 
-The codebase is entirely segmented into independent execution blocks allowing isolated generation of the problem steps. Make sure your MATLAB environment's working directory is firmly locked into the `Veridin-Matlab` root folder containing `main.m` to avoid pathing failures.
+### Step 1: Getting the Project from GitHub over to MATLAB
+To interact heavily with these models locally, you must first clone the repository bounds directly to your filesystem and establish your active MATLAB directory parameters.
+1. Open your standard command line (or Git Bash/terminal).
+2. Clone the directory natively:
+   ```bash
+   git clone https://github.com/[YourUsername]/Veridin-Matlab.git
+   ```
+3. Boot up your local installation of **MATLAB**.
+4. In MATLAB, navigate your path visually using the `< Current Folder >` toolbar exactly into the cloned `Veridin-Matlab` directory. 
+5. *(Optional)* For maximum safety, you may right-click the `src/` directory directly within MATLAB's file viewer and select **Add to Path > Selected Folders and Subfolders**.
 
-### Step A: Executing the Trajectory Optimization Loop
+The codebase is entirely segmented into independent execution blocks allowing isolated generation of the problem steps. Ensure your MATLAB environment's working directory is firmly locked into the `Veridin-Matlab` root folder containing `main.m` to avoid arbitrary pathing failures!
+
+### Step 2: Executing the Trajectory Optimization Loop
 The primary driver `main.m` is responsible for evaluating hundreds of thousands of independent geometric bounds.
 ```matlab
 % In MATLAB Console:
@@ -35,7 +46,7 @@ main
 - Valid geometries push initial tracking variables into our Universal Variables equations (see `VERIDIAN_CODE_GUIDE.md`), returning precise physical fuel costs.
 - Automatically isolates and logs the explicit minimal fuel scenario directly over to `data/optimal_trajectory.csv`.
 
-### Step B: Launch Window Mapping (Porkchop Plot Validation)
+### Step 3: Launch Window Mapping (Porkchop Plot Validation)
 To scientifically validate our isolated launch bounds, we map continuous gradient boundaries globally.
 ```matlab
 run('notebooks/porkchop.m');
@@ -45,7 +56,7 @@ run('notebooks/porkchop.m');
 - Uses `contourf` building dense top-down topological valleys visually highlighting isolated launch windows minimizing $\Delta V_{total}$. 
 - Extremely useful in defending optimization results directly in your final physics report.
 
-### Step C: Orbital Propagation & Tracker Log Generation
+### Step 4: Orbital Propagation & Tracker Log Generation
 You must build your exact required evaluation matrices before animation.
 ```matlab
 export_trajectory
@@ -55,7 +66,7 @@ export_trajectory
 - Generates continuous real-world integration boundaries $\ddot{\mathbf{r}} = -\mu \frac{\mathbf{r}}{r^3}$ binding firmly into MATLAB's implicit standard `ode45` relative to the Veridian Star's core mass.
 - Forcefully sets strict bounds isolating integration snapshots identically to 5-day gaps extending across identical 8-year gaps. Maps directly into `results/spacecraft_5day_coords.csv`.
 
-### Step D: Veridian-Centric & Ventus-Centric Animation Compilation
+### Step 5: Veridian-Centric & Ventus-Centric Animation Compilation
 Concludes your assignment requirements by actively drawing coordinate datasets out into an MP4 file.
 ```matlab
 animate_simulation
