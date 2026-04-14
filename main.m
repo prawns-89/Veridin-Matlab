@@ -13,14 +13,29 @@ catch ME
     return;
 end
 
-t_depart_grid = 60000:10:61095;
-tof1_grid = 200:10:800;
-tof2_grid = 200:10:800;
+t_depart_grid_coarse = 60000:15:61095;
+tof1_grid_coarse = 200:15:800;
+tof2_grid_coarse = 200:15:800;
 
-total_combinations = length(t_depart_grid) * length(tof1_grid) * length(tof2_grid);
-fprintf('Running exact specification grid search over %d combinations...\n', total_combinations);
+fprintf('--- PASS 1: Coarse Grid Search ---\n');
+fprintf('Evaluating broad geometric combinations at 15-day intervals...\n');
+best_solution = search(ephemeris, t_depart_grid_coarse, tof1_grid_coarse, tof2_grid_coarse);
 
-best_solution = search(ephemeris, t_depart_grid, tof1_grid, tof2_grid);
+if ~isempty(best_solution)
+    fprintf('Pass 1 Optimal Found (DV: %.2f km/s) at MJD %.1f | TOF1: %.1f | TOF2: %.1f\n', ...
+        best_solution.results.total_dv, best_solution.t_depart, best_solution.tof_1, best_solution.tof_2);
+    fprintf('\n--- PASS 2: Fine Grid Search ---\n');
+    fprintf('Evaluating localized optimum at intense 1-day intervals ±15 days...\n');
+    
+    t_depart_grid_fine = (best_solution.t_depart - 15) : 1 : (best_solution.t_depart + 15);
+    tof1_grid_fine = (best_solution.tof_1 - 15) : 1 : (best_solution.tof_1 + 15);
+    tof2_grid_fine = (best_solution.tof_2 - 15) : 1 : (best_solution.tof_2 + 15);
+    
+    best_solution_fine = search(ephemeris, t_depart_grid_fine, tof1_grid_fine, tof2_grid_fine);
+    if ~isempty(best_solution_fine) && (best_solution_fine.results.total_dv < best_solution.results.total_dv)
+        best_solution = best_solution_fine;
+    end
+end
 
 if isempty(best_solution)
     fprintf('No valid trajectories found within standard unpowered constraint.\n');

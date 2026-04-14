@@ -45,4 +45,6 @@ function res = evaluate_trajectory(ephemeris, t_depart, tof_1, tof_2, direction,
     res.dv_arrive = dv_arrive;
     res.rp_ventus = rp;
     res.v_inf_arrive = v_inf_arrive;
+    res.v_inf_in_vec = v1_arrive - v_ventus;
+    res.v_inf_out_vec = v2_depart - v_ventus;
 end
