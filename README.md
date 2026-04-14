@@ -1,4 +1,4 @@
-# Mission Veridian: Gravity-Assist Trajectory Pipeline
+# Mission Veridian: Gravity-Assist Trajectory Optimization (MATLAB Edition)
 
 **Course:** Flight and Space Mechanics (R5ME2206T)  
 **Institute:** VJTI Mumbai — Second-Year Aerospace Engineering MDM, Semester IV (2025-26)  
@@ -6,125 +6,92 @@
 
 ---
 
-## Logistical Overview & Deliverables
-This repository contains the complete mathematical pipeline evaluated entirely in MATLAB to demonstrate the optimal trajectory from a Caelus parking orbit, undergoing an unpowered gravity assist around Ventus, and targeting a rendezvous with Glacia.
+## 1. Executive Summary & Mission Objective
+This repository contains a comprehensive orbital mechanics pipeline natively developed in MATLAB. Our primary mission objective is to successfully construct a theoretical patched-conic trajectory from an initial 500 km circular parking orbit around **Caelus** to intercept and achieve a kinematic rendezvous with **Glacia**.
 
-### Generated Architecture:
-1. **Report:** Located inside `report/mission_report.md`
-2. **Raw Coordinates:** Exported natively at precise 5-day stepwise frames (`results/spacecraft_5day_coords.csv`)
-3. **Animations:** Dual subplot `.mp4` tracking the overall Heliocentric maneuvers *and* tracking Ventus tightly dead-centered on the hyperbolic pass (`results/planetary_simulation.mp4`).
+To satisfy the demanding $1.5 \text{ km/s}$ continuous propellant boundary constraint over an 8-year terrestrial transit maximum, the algorithms analytically determine an overarching ballistic trajectory. This trajectory intercepts the inner gas giant planet, **Ventus**, executing an unpowered slingshot gravity-assist to slingshot the spacecraft effectively outward.
 
----
-
-## Detailed Implementation & Core Mechanics
-
-The codebase avoids reliance on simplified toolboxes to transparently show numerical orbital mechanics. Below is the structural logic applied across our scripts.
-
-### 1. Ephemeris Processing (`src/EphemerisSystem.m`)
-We are provided a single continuous CSV containing Caelus, Ventus, and Glacia 5-day state grids. Simple indexing causes rounding errors for Lambert bounding intervals. 
-
-**Implementation:** We initialize an object to fit piecewise polynomials via strict 1D cubic interpolation (`spline()`), guaranteeing microsecond querying without temporal jumps.
-```matlab
-% Example Code Implementation (Interpolation)
-r_pts = [data.Ventus_x, data.Ventus_y, data.Ventus_z];
-obj.splines.Ventus.r = spline(obj.mjd, r_pts'); % Fit positional points
-
-% Function Access Example
-[r, v] = get_state(ephemeris, 'Ventus', 60800.5) % Query explicit decimal bound
-```
-
-### 2. Lambert's Problem Solver (`src/lambert.m`)
-The core of our mathematical modeling connects bounds $r_1, r_2$ using the **Universal Variable Formulation**.
-
-**Implementation:** Stumpff functions are processed natively to allow uniform bounds across standard elliptical/hyperbolic transfers explicitly overcoming 180° plane degeneracies. We isolate the true anomaly $z$ root functionally via bounds inside MATLAB's natively robust `fzero`.
-```matlab
-% Universal Anomaly Iterative Bounds via fzero
-function dt_err = tof_equation(z)
-    [C, S] = cs_func(z); % Stumpff evaluation
-    y = mag_r1 + mag_r2 + A * (z * S - 1) / sqrt(C);
-    x = sqrt(y / C);
-    dt_err = ((x^3 * S + A * sqrt(y)) / sqrt(mu)) - tof; 
-end
-
-z = fzero(@tof_equation, [-100, 4*pi^2], optimset('Display', 'off'));
-```
-
-### 3. Patched-Conic Constraints & Flyby Math
-The search logic mandates unpowered bounds and thermal clearances. The physical values natively interact via basic Vis-Viva equations in `src/delta_v.m` and turning geometries in `src/gravity_assist.m`.
-
-**Implementation:** We evaluate overlapping Lambert velocities locally against the planetary velocities (hyperbolic excess velocities $v_\infty$).
-```matlab
-% Unpowered Turning Angle Bounds (gravity_assist.m)
-v_inf_in_vec = v_in_heliocentric - v_planet;
-v_inf_out_vec = v_out_heliocentric - v_planet;
-
-dot_prod = dot(v_inf_in_vec, v_inf_out_vec) / (v_inf_in * v_inf_out);
-delta = acos(max(min(dot_prod, 1.0), -1.0)); % Deriving delta turn
-
-e = 1.0 / sin(delta / 2.0);
-rp = (mu_planet / v_inf_avg^2) * (e - 1.0); % Required flyby pass altitude
-```
-
-### 4. Modular Trajectory Evaluation (`src/evaluate_trajectory.m`)
-To keep grid-search loops clean and allow robust querying from graphical modules like the Porkchop plot, the trajectory simulation logic is separated into its own globally callable function. It chains everything—the Ephemeris indexing, Lambert matching, and standard Vis-Viva constraint passing—together to yield a singular cleanly formatted array of resulting costs.
+### Formal Generated Deliverables:
+The code architecture natively drives the distinct outputs outlined within the course rubric:
+1. **Formal Mission Report:** Generated at `report/mission_report.md`, detailing optimization variables.
+2. **5-Day Stepwise State Matrix:** The simulation inherently constructs chronological $X, Y, Z$ trajectory coordinates directly bound to exact 5-day intervals natively pushed to `results/spacecraft_5day_coords.csv`.
+3. **Dual Visualizations Engine:** The `animate_simulation.m` explicitly writes a unified `.mp4` file visualizing both the massive heliocentric solar intercept and an isolated micro-view tracking the Ventus-centric hyperbolic pass.
 
 ---
 
-## Operating Instructions
+## 2. Advanced Operating Instructions
 
-Run these files sequentially internally in your MATLAB environment (Verify you are actively sitting inside the `Veridin-Matlab` directory).
+The codebase is entirely segmented into independent execution blocks allowing isolated generation of the problem steps. Make sure your MATLAB environment's working directory is firmly locked into the `Veridin-Matlab` root folder containing `main.m` to avoid pathing failures.
 
-### Step 1: Iterate Optimization Matrix
+### Step A: Executing the Trajectory Optimization Loop
+The primary driver `main.m` is responsible for evaluating hundreds of thousands of independent geometric bounds.
 ```matlab
+% In MATLAB Console:
 main
 ```
-**What this does:**
-We build ranges for Caelus Departure (`60000 - 61095`), Target Caelus$\rightarrow$Ventus TOF, and Ventus$\rightarrow$Glacia TOF exactly specified from ranges `200` to `800`.
-- We loop strictly over valid permutations, discarding sets breaching 0.4 AU proximity thresholds locally prior to initiating costly Stumpff function roots.
-- Valid intercept combinations return bounded penalty scalars evaluated for fuel. The global minimal set determines our single target parameters.
-- Outputs dynamically to: `data/optimal_trajectory.csv`.
+**Detailed Sub-Operations:**
+- `main.m` loads the Ephemeris boundaries and iterates systematically through three primary variables: `Caelus Departure Bounds (MJD 60000 -> 61095)`, `TOF Ventus Intercept`, and `TOF Glacia Intercept`.
+- Valid interactions check localized thermal constraints (skipping anything traversing $< 0.4 \text{ AU}$ of the central star) and minimum altitude limits above Ventus ($h_{flyby} > 2000 \text{ km}$).
+- Valid geometries push initial tracking variables into our Universal Variables equations (see `VERIDIAN_CODE_GUIDE.md`), returning precise physical fuel costs.
+- Automatically isolates and logs the explicit minimal fuel scenario directly over to `data/optimal_trajectory.csv`.
 
-### Step 2: Formulate Chronological XYZ Set Trackers
-```matlab
-export_trajectory
-```
-**What this does:**
-From the explicit initial launch parameter results found in Step 1, we pull out the initial $v_1$ values and pass these state vectors to `ode45`.
-- Evaluates the core two-body acceleration strictly: $\ddot{\mathbf{r}} = -\mu \frac{\mathbf{r}}{r^3}$
-- The solver is forcefully bounded to snapshot output every exact 5-day cycle: `t_span = (0:5:tof1) * 86400;`
-- Logs all vectors contiguously to `results/spacecraft_5day_coords.csv`.
-```matlab
-ode_star = @(t, y) [y(4:6); -c.MU_STAR * y(1:3) / norm(y(1:3))^3];
-[~, y1] = ode45(ode_star, (0:5:tof1)*86400, [r_C; v1_depart], options);
-```
-
-### Step 3: Graphical Export Verification
-```matlab
-animate_simulation
-```
-**What this does:**
-Translates our coordinates seamlessly into an exportable standard `results/planetary_simulation.mp4`.
-- **View 1 (Veridian View):** Projects massive heliocentric dimensions evaluating overlapping global intercept trajectories globally.
-- **View 2 (Ventus Flyby Focus):** Re-maps our spacecraft trajectories strictly relative to Ventus ($Position_{Ship} - Position_{Ventus}$). Dynamically scales bounding $X,Y$ boxes so the ship maintains framing optimally as it physically accelerates and whips hyperbolically around the planet!
-
-```matlab
-% Dynamic Scaling Code Example in Animation Builder
-sc_rel_x = sc_coords.X_km(1:i) - get_x(ephemeris, 'Ventus', sc_coords.MJD(1:i));
-
-dist = norm([sc_rel_x(end), sc_rel_y(end)]);
-if dist < 5e6
-    bound = max(R_VENTUS * 5, dist * 1.5); % Dynamically shrink view to Ventus surface!
-else 
-    bound = 2e7;
-end
-```
-
-### Step 4: Generating Launch Windows (Porkchop Plot)
+### Step B: Launch Window Mapping (Porkchop Plot Validation)
+To scientifically validate our isolated launch bounds, we map continuous gradient boundaries globally.
 ```matlab
 run('notebooks/porkchop.m');
 ```
-**What this does:**
-We have included a distinct standalone script to visually interpret total required $\Delta V$ gradients over launch boundaries.
-- Identifies the generated `optimal_trajectory` parameters or falls back to standard presets.
-- Sweeps thousands of interactions explicitly isolating *Departure MJD* dynamically against *Time of Flight to Ventus*.
-- Triggers `contourf` building a color-coded structural map displaying literal "porkchop valleys," immediately detailing where optimal unpowered flyby conditions reside relative to adjacent sub-optimal burns.
+**Detailed Sub-Operations:**
+- Engages the local trajectory evaluating cores over continuous bounds iterating strictly Departure Times against Time of Flight combinations.
+- Uses `contourf` building dense top-down topological valleys visually highlighting isolated launch windows minimizing $\Delta V_{total}$. 
+- Extremely useful in defending optimization results directly in your final physics report.
+
+### Step C: Orbital Propagation & Tracker Log Generation
+You must build your exact required evaluation matrices before animation.
+```matlab
+export_trajectory
+```
+**Detailed Sub-Operations:**
+- Ingests the explicitly optimal $T_0$ outputs from Step A. Re-solves the boundary Lambert targets returning initial vector $V_1$.
+- Generates continuous real-world integration boundaries $\ddot{\mathbf{r}} = -\mu \frac{\mathbf{r}}{r^3}$ binding firmly into MATLAB's implicit standard `ode45` relative to the Veridian Star's core mass.
+- Forcefully sets strict bounds isolating integration snapshots identically to 5-day gaps extending across identical 8-year gaps. Maps directly into `results/spacecraft_5day_coords.csv`.
+
+### Step D: Veridian-Centric & Ventus-Centric Animation Compilation
+Concludes your assignment requirements by actively drawing coordinate datasets out into an MP4 file.
+```matlab
+animate_simulation
+```
+**Detailed Sub-Operations:**
+- Establishes a massive $1200\times600$ plotting field. 
+- **Subplot 1:** Traces standard heliocentric orbits projecting the 5-day state matrix arrays sequentially behind the vessel frame by frame.
+- **Subplot 2:** Tracks the highly nuanced unpowered flyby dynamically. Actively locks Ventus securely to coordinate `(0,0)`, parsing ship coordinates relative to Ventus position. Scales graphic limitations tightly to Ventus surface bounds capturing exact acceleration geometries!
+- Wraps natively to hardware MP4 writers into `results/planetary_simulation.mp4`.
+
+---
+
+## 3. Physical Directory Architecture
+
+```text
+Veridin-Matlab/
+├── src/                          # Deep Engine Solvers
+│   ├── constants.m               # Centralized parameters definition (Masses, distances, bounds)
+│   ├── delta_v.m                 # Patched-Conic vis-viva estimators and planetary bounds
+│   ├── EphemerisSystem.m         # 1-Dimensional Cubic Spline array evaluators handling missing timeline constraints
+│   ├── evaluate_trajectory.m     # Singular overarching physics chain feeding localized grid matrices
+│   ├── gravity_assist.m          # Trigonometric delta evaluations isolating turn velocities
+│   ├── lambert.m                 # Explicit boundary Root solver tracking Universal Anomaly values
+│   └── search.m                  # Fast-failing grid iteration minimizing nested limits
+│
+├── notebooks/
+│   └── porkchop.m                # Graphical 2D contour builders explicitly verifying results
+│
+├── main.m                        # Primary structural system evaluating overarching trajectory loops
+├── export_trajectory.m           # Instantiates ode45 tracing initial vectors chronologically across exact 5-day intervals
+├── animate_simulation.m          # Extracts data plotting Ventus-centric and Helio-centric dual panels organically into .mp4
+│
+├── data/                         # CSV target definitions mapping Ephemeris models
+├── results/                      # Deliverables (5-day stepwise outputs and .mp4 visuals)
+└── report/
+    └── mission_report.md         # Final assignment document layout
+```
+
+For extremely detailed breakdowns mapping the pure numerical formulations, exact mathematical logic, tracking constraints, and explicit local code behaviors driving these functions natively through standard MATLAB blocks without explicit high-level Toolboxes, please see [VERIDIAN_CODE_GUIDE.md](./VERIDIAN_CODE_GUIDE.md).
