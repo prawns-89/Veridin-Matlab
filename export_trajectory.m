@@ -48,5 +48,8 @@ y = [y1(:,2); y2(2:end,2)];
 z = [y1(:,3); y2(2:end,3)];
 
 T_out = table(time_mjd, x, y, z, 'VariableNames', {'MJD', 'X_km', 'Y_km', 'Z_km'});
+if ~exist('results', 'dir')
+    mkdir('results');
+end
 writetable(T_out, 'results/spacecraft_5day_coords.csv');
 fprintf('Exported 5-day stepwise trajectory to results/spacecraft_5day_coords.csv\n');

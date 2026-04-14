@@ -68,6 +68,9 @@ sc_fb_tail = plot(0, 0, 'g-', 'LineWidth', 1.5);
 p_sc_fb = plot(0, 0, 'g.', 'MarkerSize', 15);
 
 % Video Writer Setup
+if ~exist('results', 'dir')
+    mkdir('results');
+end
 v = VideoWriter('results/planetary_simulation.mp4', 'MPEG-4');
 v.FrameRate = 15;
 open(v);
