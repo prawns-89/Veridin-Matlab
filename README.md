@@ -65,6 +65,9 @@ e = 1.0 / sin(delta / 2.0);
 rp = (mu_planet / v_inf_avg^2) * (e - 1.0); % Required flyby pass altitude
 ```
 
+### 4. Modular Trajectory Evaluation (`src/evaluate_trajectory.m`)
+To keep grid-search loops clean and allow robust querying from graphical modules like the Porkchop plot, the trajectory simulation logic is separated into its own globally callable function. It chains everything—the Ephemeris indexing, Lambert matching, and standard Vis-Viva constraint passing—together to yield a singular cleanly formatted array of resulting costs.
+
 ---
 
 ## Operating Instructions
@@ -115,3 +118,13 @@ else
     bound = 2e7;
 end
 ```
+
+### Step 4: Generating Launch Windows (Porkchop Plot)
+```matlab
+run('notebooks/porkchop.m');
+```
+**What this does:**
+We have included a distinct standalone script to visually interpret total required $\Delta V$ gradients over launch boundaries.
+- Identifies the generated `optimal_trajectory` parameters or falls back to standard presets.
+- Sweeps thousands of interactions explicitly isolating *Departure MJD* dynamically against *Time of Flight to Ventus*.
+- Triggers `contourf` building a color-coded structural map displaying literal "porkchop valleys," immediately detailing where optimal unpowered flyby conditions reside relative to adjacent sub-optimal burns.
